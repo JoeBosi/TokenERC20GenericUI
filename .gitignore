@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+CONTRATTO_di_Test
+specifiche_iniziali
+
 # Build output
 dist/
 dist-ssr/

@@ -15,19 +15,16 @@ const KNOWN_ROLES = {
   'TRANSFER_ROLE': '0x5e6d48f5c28b8c65e2a7b5e5d5e8c5d6b7a8e9f0a1b2c3d4e5f6a7b8c9d0e1f',
 };
 
-function RoleExplorer({ contract, account }) {
+const STORAGE_KEY_CUSTOM_ROLES = 'w3ct_custom_roles';
+
+function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles }) {
   const [roleChecks, setRoleChecks] = useState({});
   const [checkAddress, setCheckAddress] = useState('');
   const [addressRoles, setAddressRoles] = useState({});
   const [roleMembers, setRoleMembers] = useState({});
   const [expandedRole, setExpandedRole] = useState(null);
   const [isEnumerable, setIsEnumerable] = useState(false);
-  const [customRoles, setCustomRoles] = useState({});
   const [newRoleName, setNewRoleName] = useState('');
-  const [newRoleHash, setNewRoleHash] = useState('');
-  
-  // Combine known and custom roles
-  const allRoles = { ...KNOWN_ROLES, ...customRoles };
   
   useEffect(() => {
     if (!contract || !account) return;
@@ -110,7 +107,7 @@ function RoleExplorer({ contract, account }) {
     <div style={roleStyles.card}>
       <div style={roleStyles.header}>
         <div style={roleStyles.titleSection}>
-          <h3 style={roleStyles.title}>Ruoli</h3>
+          <h3 style={roleStyles.title}>Roles</h3>
           <p style={roleStyles.subtitle}>{isEnumerable ? 'AccessControlEnumerable' : 'AccessControl'}</p>
         </div>
       </div>
@@ -120,7 +117,7 @@ function RoleExplorer({ contract, account }) {
         <div style={roleStyles.inputRow}>
           <input
             type="text"
-            placeholder="0x... verifica indirizzo"
+            placeholder="0x... check address"
             value={checkAddress}
             onChange={(e) => setCheckAddress(e.target.value)}
             style={roleStyles.addressInput}
@@ -141,7 +138,7 @@ function RoleExplorer({ contract, account }) {
       
       {/* Custom roles input */}
       <div style={roleStyles.customSection}>
-        <p style={roleStyles.sectionLabel}>Aggiungi ruolo (nome in chiaro):</p>
+        <p style={roleStyles.sectionLabel}>Add role (clear name):</p>
         <div style={roleStyles.customInputRow}>
           <input
             type="text"
@@ -153,7 +150,7 @@ function RoleExplorer({ contract, account }) {
           />
           <button onClick={addCustomRole} style={roleStyles.addBtn}>+</button>
         </div>
-        <p style={roleStyles.hintText}>L'hash keccak256 viene calcolato automaticamente</p>
+        <p style={roleStyles.hintText}>keccak256 hash calculated automatically</p>
       </div>
       
       <div style={roleStyles.rolesList}>
@@ -203,12 +200,13 @@ function RoleExplorer({ contract, account }) {
 // Address Monitor Component
 const STORAGE_KEY_ADDRESSES = 'w3ct_monitored_addresses';
 
-function AddressMonitor({ contract, provider }) {
+function AddressMonitor({ contract, provider, tokenSymbol, allRoles, refreshTrigger }) {
   const [addresses, setAddresses] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY_ADDRESSES);
     return saved ? JSON.parse(saved) : ['', '', '', '', ''];
   });
   const [balances, setBalances] = useState({});
+  const [tokenBalances, setTokenBalances] = useState({});
   const [addressRoles, setAddressRoles] = useState({});
   
   // Save to localStorage when addresses change
@@ -222,7 +220,10 @@ function AddressMonitor({ contract, provider }) {
     
     const fetchData = async () => {
       const newBalances = {};
+      const newTokenBalances = {};
       const newRoles = {};
+      
+      const rolesToCheck = allRoles || KNOWN_ROLES;
       
       for (const addr of addresses) {
         if (!addr || !ethers.isAddress(addr)) continue;
@@ -232,10 +233,18 @@ function AddressMonitor({ contract, provider }) {
           const balance = await provider.getBalance(addr);
           newBalances[addr] = ethers.formatEther(balance);
           
-          // Get roles if contract exists
+          // Get token balance if contract exists
           if (contract) {
+            try {
+              const tokenBal = await contract.balanceOf(addr);
+              newTokenBalances[addr] = ethers.formatUnits(tokenBal, 18);
+            } catch {
+              // Token may not have balanceOf
+            }
+            
+            // Get roles
             const roles = {};
-            for (const [name, hash] of Object.entries(KNOWN_ROLES)) {
+            for (const [name, hash] of Object.entries(rolesToCheck)) {
               try {
                 const hasRole = await contract.hasRole(hash, addr);
                 roles[name] = hasRole;
@@ -251,6 +260,7 @@ function AddressMonitor({ contract, provider }) {
       }
       
       setBalances(newBalances);
+      setTokenBalances(newTokenBalances);
       setAddressRoles(newRoles);
     };
     
@@ -258,7 +268,7 @@ function AddressMonitor({ contract, provider }) {
     // Refresh every 10 seconds
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [addresses, contract, provider]);
+  }, [addresses, contract, provider, allRoles, refreshTrigger]);
   
   const updateAddress = (index, value) => {
     const newAddresses = [...addresses];
@@ -269,8 +279,14 @@ function AddressMonitor({ contract, provider }) {
   const resetAll = () => {
     setAddresses(['', '', '', '', '']);
     setBalances({});
+    setTokenBalances({});
     setAddressRoles({});
     localStorage.removeItem(STORAGE_KEY_ADDRESSES);
+    localStorage.removeItem(STORAGE_KEY_CUSTOM_ROLES);
+    // Also clear contract and ABI
+    localStorage.removeItem('w3ct_contract_address');
+    localStorage.removeItem('w3ct_contract_abi');
+    window.location.reload();
   };
   
   const getActiveRoles = (addr) => {
@@ -281,12 +297,20 @@ function AddressMonitor({ contract, provider }) {
       .map(([name]) => name.replace('_ROLE', ''));
   };
   
+  const formatTokenBalance = (addr) => {
+    const bal = tokenBalances[addr];
+    if (!bal) return null;
+    const num = parseFloat(bal);
+    if (num === 0) return null;
+    return num > 1000000 ? `${(num / 1000000).toFixed(2)}M` : num.toFixed(4);
+  };
+  
   return (
     <div style={monitorStyles.card}>
       <div style={monitorStyles.header}>
         <div style={monitorStyles.titleSection}>
           <h3 style={monitorStyles.title}>Address Monitor</h3>
-          <p style={monitorStyles.subtitle}>5 indirizzi salvati</p>
+          <p style={monitorStyles.subtitle}>5 saved addresses</p>
         </div>
       </div>
       
@@ -305,7 +329,14 @@ function AddressMonitor({ contract, provider }) {
             </div>
             {ethers.isAddress(addr) && balances[addr] && (
               <div style={monitorStyles.info}>
-                <span style={monitorStyles.balance}>{parseFloat(balances[addr]).toFixed(4)} POL</span>
+                <div style={monitorStyles.balancesRow}>
+                  <span style={monitorStyles.balance}>{parseFloat(balances[addr]).toFixed(4)} POL</span>
+                  {formatTokenBalance(addr) && (
+                    <span style={monitorStyles.tokenBalance}>
+                      {formatTokenBalance(addr)} {tokenSymbol || 'TKN'}
+                    </span>
+                  )}
+                </div>
                 {getActiveRoles(addr).length > 0 && (
                   <div style={monitorStyles.roles}>
                     {getActiveRoles(addr).map(r => (
@@ -320,7 +351,7 @@ function AddressMonitor({ contract, provider }) {
       </div>
       
       <button onClick={resetAll} style={monitorStyles.resetBtn}>
-        Reset informazioni salvate
+        Reset saved information
       </button>
     </div>
   );
@@ -396,6 +427,17 @@ const monitorStyles = {
     fontSize: '12px',
     fontWeight: 600,
     color: '#007AFF',
+    fontFamily: 'monospace',
+  },
+  balancesRow: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+  },
+  tokenBalance: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#34C759',
     fontFamily: 'monospace',
   },
   roles: {
@@ -664,6 +706,42 @@ function App() {
     refreshReadValues,
   } = useContract(provider, signer, fetchBalances);
 
+  const [tokenSymbol, setTokenSymbol] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Custom roles state (shared between RoleExplorer and AddressMonitor)
+  const [customRoles, setCustomRoles] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_CUSTOM_ROLES);
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  // Save custom roles to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_CUSTOM_ROLES, JSON.stringify(customRoles));
+  }, [customRoles]);
+  
+  // Combine known and custom roles
+  const allRoles = { ...KNOWN_ROLES, ...customRoles };
+
+  // Fetch token symbol from contract
+  useEffect(() => {
+    if (!contract) {
+      setTokenSymbol('');
+      return;
+    }
+    
+    const fetchSymbol = async () => {
+      try {
+        const symbol = await contract.symbol();
+        setTokenSymbol(symbol);
+      } catch {
+        setTokenSymbol('');
+      }
+    };
+    
+    fetchSymbol();
+  }, [contract]);
+
   return (
     <>
       <style>{`
@@ -760,17 +838,29 @@ function App() {
                     <circle cx="12" cy="8" r="6"/>
                     <polyline points="8 13 6 21 12 18 18 21 16 13"/>
                   </svg>
-                  Aggiungi a MetaMask
+                  Add to MetaMask
                 </button>
               </div>
             )}
             
             {isConnected && (
-              <RoleExplorer contract={contract} account={account} />
+              <RoleExplorer 
+                contract={contract} 
+                account={account}
+                allRoles={allRoles}
+                customRoles={customRoles}
+                setCustomRoles={setCustomRoles}
+              />
             )}
             
             {isConnected && (
-              <AddressMonitor contract={contract} provider={provider} />
+              <AddressMonitor 
+                contract={contract} 
+                provider={provider} 
+                tokenSymbol={tokenSymbol}
+                allRoles={allRoles}
+                refreshTrigger={refreshTrigger}
+              />
             )}
           </div>
           
@@ -780,6 +870,7 @@ function App() {
               readMethods={readMethods}
               writeMethods={writeMethods}
               autoReadValues={autoReadValues}
+              onTransactionSuccess={() => setRefreshTrigger(prev => prev + 1)}
               onRefreshReads={refreshReadValues}
               account={account}
             />
@@ -805,7 +896,7 @@ function App() {
 
       <footer style={styles.footer}>
         <p style={styles.footerText}>
-          Web3 Contract Tester · Polygon Amoy Testnet
+          Giuseppe Bosi
         </p>
       </footer>
     </div>
@@ -816,11 +907,11 @@ function App() {
 const styles = {
   app: {
     minHeight: '100vh',
+    background: '#F5F5F7',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    color: '#1D1D1F',
     display: 'flex',
     flexDirection: 'column',
-    background: '#F2F2F7',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    WebkitFontSmoothing: 'antialiased',
   },
   header: {
     padding: '10px 16px',
@@ -935,9 +1026,10 @@ const styles = {
   },
   main: {
     flex: 1,
-    padding: '16px 0',
+    padding: '16px 0 80px',
     display: 'flex',
     justifyContent: 'center',
+    overflowY: 'auto',
   },
   container: {
     maxWidth: '1400px',
@@ -1025,13 +1117,22 @@ const styles = {
     margin: 0,
   },
   footer: {
-    padding: '12px 16px',
-    textAlign: 'center',
+    padding: '4px 16px',
+    textAlign: 'right',
+    background: '#F5F5F7',
+    borderTop: '0.5px solid #E5E5EA',
+    position: 'sticky',
+    bottom: 0,
+    zIndex: 10,
   },
   footerText: {
-    fontSize: '11px',
-    color: '#666',
+    fontSize: '10px',
+    color: '#86868B',
     margin: 0,
+  },
+  footerAuthor: {
+    color: '#1D1D1F',
+    fontWeight: 500,
   },
 };
 

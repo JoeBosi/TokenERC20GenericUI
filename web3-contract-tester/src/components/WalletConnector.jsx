@@ -23,7 +23,7 @@ export function WalletConnector({ account, isConnecting, isCorrectNetwork, isDev
             <p style={styles.subtitle}>
               {account 
                 ? (isDevMode ? 'Dev Mode' : 'MetaMask') 
-                : 'Seleziona modalità'}
+                : 'Select mode'}
             </p>
           </div>
           {account && (
@@ -90,7 +90,7 @@ export function WalletConnector({ account, isConnecting, isCorrectNetwork, isDev
                   {isConnecting ? (
                     <span style={styles.loading}>
                       <span style={styles.spinner}></span>
-                      Connessione...
+                      Connecting...
                     </span>
                   ) : (
                     <>
@@ -98,7 +98,7 @@ export function WalletConnector({ account, isConnecting, isCorrectNetwork, isDev
                         <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                         <path d="M16 12l4 4m0-4l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                       </svg>
-                      Connetti MetaMask
+                      Connect MetaMask
                     </>
                   )}
                 </button>
@@ -115,7 +115,7 @@ export function WalletConnector({ account, isConnecting, isCorrectNetwork, isDev
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ marginRight: '8px' }}>
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  Connetti Dev Mode
+                  Connect Dev Mode
                 </button>
               )}
             </div>

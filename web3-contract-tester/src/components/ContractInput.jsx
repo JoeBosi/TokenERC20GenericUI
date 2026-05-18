@@ -14,8 +14,8 @@ export function ContractInput({
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.titleSection}>
-            <h3 style={styles.title}>Contratto</h3>
-            <p style={styles.subtitle}>Indirizzo e ABI</p>
+            <h3 style={styles.title}>Contract</h3>
+            <p style={styles.subtitle}>Address & ABI</p>
           </div>
         </div>
 
@@ -27,7 +27,7 @@ export function ContractInput({
 
         <div style={styles.content}>
           <div style={styles.field}>
-            <label style={styles.label}>Indirizzo Contratto</label>
+            <label style={styles.label}>Contract Address</label>
             <input
               type="text"
               value={contractAddress}
@@ -46,7 +46,7 @@ export function ContractInput({
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5"/>
                     <path d="M2 12l10 5 10-5"/>
                   </svg>
-                  Preset ERC20
+                  ERC20 Preset
                 </button>
               </div>
             </div>
@@ -67,7 +67,7 @@ export function ContractInput({
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
               </svg>
-              Cancella dati
+              Clear data
             </button>
           )}
         </div>

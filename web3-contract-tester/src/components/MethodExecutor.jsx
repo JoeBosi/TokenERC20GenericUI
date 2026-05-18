@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 
-export function MethodExecutor({ contract, readMethods, writeMethods, autoReadValues, onRefreshReads, account }) {
+export function MethodExecutor({ contract, readMethods, writeMethods, autoReadValues, onRefreshReads, account, onTransactionSuccess }) {
   const [methodInputs, setMethodInputs] = useState({});
   const [methodResults, setMethodResults] = useState({});
   const [executingMethods, setExecutingMethods] = useState(new Set());
@@ -116,6 +116,11 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
           timestamp: Date.now(),
         },
       }));
+      
+      // Notify parent component for refresh
+      if (!isRead && onTransactionSuccess) {
+        onTransactionSuccess();
+      }
     } catch (err) {
       const decodedError = decodeContractError(err);
       setMethodResults(prev => ({
@@ -256,7 +261,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
           <div style={styles.methodInfo}>
             <span style={{
               ...styles.badge,
-              ...(isRead ? styles.readBadge : styles.writeBadge),
+              ...(isRead ? styles.readBadgeSmall : styles.writeBadgeSmall),
             }}>
               {isRead ? 'READ' : 'WRITE'}
             </span>
@@ -319,7 +324,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
                   <line x1="12" y1="8" x2="12" y2="12"/>
                   <line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                Connetti il wallet per eseguire
+                Connect wallet to execute
               </div>
             )}
 
@@ -347,7 +352,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
                     )}
                     {isRead && <circle cx="12" cy="12" r="3"/>}
                   </svg>
-                  {isRead ? 'Esegui Lettura' : 'Esegui Scrittura'}
+                  {isRead ? 'Execute Read' : 'Execute Write'}
                 </>
               )}
             </button>
@@ -409,7 +414,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
                                 </div>
                               ))
                             ) : (
-                              <div style={styles.noArgs}>Nessun argomento</div>
+                              <div style={styles.noArgs}>No arguments</div>
                             )
                           ) : (
                             <div style={styles.eventArg}>
@@ -442,7 +447,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
             </div>
             <div style={styles.titleSection}>
               <h3 style={styles.title}>Metodi Contratto</h3>
-              <p style={styles.subtitle}>Nessun metodo trovato nell'ABI</p>
+              <p style={styles.subtitle}>No methods found in ABI</p>
             </div>
           </div>
           <div style={styles.noContract}>
@@ -480,19 +485,28 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       <div style={styles.container}>
         <div style={styles.card}>
         <div style={styles.header}>
-          <div style={styles.icon}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="16 18 22 12 16 6"/>
-              <polyline points="8 6 2 12 8 18"/>
+          <div style={styles.headerIcon}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
           </div>
           <div style={styles.titleSection}>
             <h3 style={styles.title}>Metodi Contratto</h3>
-            <p style={styles.subtitle}>
-              {readMethods.length} lettura · {writeMethods.length} scrittura
-              {(filteredReadMethods.length + filteredWriteMethods.length < readMethods.length + writeMethods.length) && 
-                ` · ${filteredReadMethods.length + filteredWriteMethods.length} filtrati`}
-            </p>
+          </div>
+          <div style={styles.headerBadges}>
+            <span style={styles.readBadge}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+              {readMethods.length} read
+            </span>
+            <span style={styles.writeBadge}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M12 2v20M2 12h20"/>
+              </svg>
+              {writeMethods.length} write
+            </span>
           </div>
         </div>
         
@@ -504,7 +518,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
           </svg>
           <input
             type="text"
-            placeholder="Cerca metodo..."
+            placeholder="Search method..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={styles.searchInput}
@@ -518,7 +532,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
           {filteredReadMethods.map(method => renderMethodCard(method, true, isConnected))}
           {filteredWriteMethods.map(method => renderMethodCard(method, false, isConnected))}
           {filteredReadMethods.length === 0 && filteredWriteMethods.length === 0 && (
-            <div style={styles.noResults}>Nessun metodo trovato</div>
+            <div style={styles.noResults}>No methods found</div>
           )}
         </div>
       </div>
@@ -545,6 +559,22 @@ const styles = {
     paddingBottom: '10px',
     borderBottom: '0.5px solid #E5E5EA',
   },
+  headerIcon: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    marginRight: '12px',
+    boxShadow: '0 2px 8px rgba(0, 122, 255, 0.3)',
+  },
+  headerBadges: {
+    display: 'flex',
+    gap: '8px',
+  },
   titleSection: {
     flex: 1,
   },
@@ -559,6 +589,28 @@ const styles = {
     fontSize: '13px',
     color: '#86868B',
     margin: '2px 0 0 0',
+  },
+  readBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#34C759',
+    background: 'rgba(52, 199, 89, 0.1)',
+    padding: '4px 10px',
+    borderRadius: '100px',
+  },
+  writeBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#FF9500',
+    background: 'rgba(255, 149, 0, 0.1)',
+    padding: '4px 10px',
+    borderRadius: '100px',
   },
   searchRow: {
     display: 'flex',
@@ -620,11 +672,11 @@ const styles = {
     padding: '2px 6px',
     borderRadius: '100px',
   },
-  readBadge: {
+  readBadgeSmall: {
     background: 'rgba(52, 199, 89, 0.12)',
     color: '#34C759',
   },
-  writeBadge: {
+  writeBadgeSmall: {
     background: 'rgba(0, 0, 0, 0.08)',
     color: '#666',
   },
@@ -784,6 +836,8 @@ const styles = {
     padding: '10px 12px',
     background: 'rgba(0, 122, 255, 0.08)',
     borderRadius: '10px',
+    overflow: 'hidden',
+    maxWidth: '100%',
   },
   autoReadLabel: {
     fontSize: '11px',
@@ -791,10 +845,14 @@ const styles = {
     fontWeight: 500,
   },
   autoReadData: {
-    fontSize: '15px',
+    fontSize: '13px',
     color: '#007AFF',
     fontWeight: 600,
     fontFamily: 'SF Mono, SFMono-Regular, monospace',
+    wordBreak: 'break-all',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: '100%',
   },
   eventsSection: {
     marginTop: '14px',

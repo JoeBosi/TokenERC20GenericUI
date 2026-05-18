@@ -179,8 +179,8 @@ export function useWallet() {
       devWallet.sendTransaction = async (tx) => {
         const updatedTx = {
           ...tx,
-          maxFeePerGas: ethers.parseUnits('30', 'gwei'),  // 30 Gwei max
-          maxPriorityFeePerGas: ethers.parseUnits('25', 'gwei'), // 25 Gwei min required
+          maxFeePerGas: ethers.parseUnits('50', 'gwei'),  // 50 Gwei max fee
+          maxPriorityFeePerGas: ethers.parseUnits('30', 'gwei'), // 30 Gwei priority (min 25 required)
         };
         return originalSendTransaction(updatedTx);
       };

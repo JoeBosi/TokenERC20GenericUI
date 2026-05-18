@@ -1,0 +1,48 @@
+# REQUISITI DI PROGETTO: WEB3 CONTRACT TESTER DASHBOARD
+design minimale stile apple
+
+
+## 1. Obiettivi Generali
+
+Il sistema consiste in una Single Page Application (SPA) client-side che permette agli sviluppatori di connettere il proprio wallet MetaMask, configurare automaticamente la rete di test ed eseguire il parsing dinamico di qualsiasi smart contract ERC20 inserito, abilitando il testing immediato delle funzioni di lettura e scrittura.
+
+---
+
+## 2. Requisiti Funzionali
+
+| ID | Modulo | Requisito Dettagliato |
+| --- | --- | --- |
+| **RF-01** | **Gestione Wallet** | Connessione iniziale tramite MetaMask (`eth_requestAccounts`). |
+| **RF-02** | **Gestione Wallet** | Disconnessione logica dell'interfaccia utente (reset dello stato interno della dApp). |
+| **RF-03** | **Gestione Wallet** | Monitoraggio in tempo reale del cambio account (`accountsChanged`) e cambio rete (`chainChanged`). |
+| **RF-04** | **Configurazione Rete** | Verifica automatica del Chain ID. Se diverso da `80002`, richiesta di switch o aggiunta automatica della rete **Polygon Amoy**. |
+| **RF-05** | **Input Contratto** | Campo di testo (Input) per l'inserimento dell'indirizzo dello smart contract. |
+| **RF-06** | **Input Contratto** | Area di testo (Textarea) per l'incollamento dell'ABI in formato JSON. |
+| **RF-07** | **Persistenza Dati** | Salvataggio automatico in locale (es. `localStorage`) di Indirizzo e ABI. I dati rimangono memorizzati e pre-compilati al caricamento della pagina fino a esplicita modifica o cancellazione da parte dell'utente. |
+| **RF-08** | **Preset OpenZeppelin** | Pulsante per caricare istantaneamente l'ABI ERC20 standard di OpenZeppelin, senza obbligare l'utente all'incollamento manuale. |
+| **RF-09** | **Parsing Dinamico** | Analisi dell'ABI e generazione automatica dell'interfaccia di test, dividendo i metodi in due categorie: Lettura (*view/pure*) e Scrittura (*payable/nonpayable*). |
+| **RF-10** | **Esecuzione Metodi** | Generazione di form dinamici per l'inserimento dei parametri richiesti da ciascuna funzione e pulsante di esecuzione della chiamata (chiamata di lettura o transazione di scrittura). |
+| **RF-11** | **Tracciamento Token** | Pulsante per aggiungere automaticamente il token ERC20 a MetaMask (`wallet_watchAsset`), recuperando dinamicamente simbolo e decimali dal contratto. |
+
+---
+
+## 3. Parametri di Configurazione Rete (Polygon Amoy)
+
+| Parametro | Valore Richiesto |
+| --- | --- |
+| **Network Name** | Polygon Amoy Testnet |
+| **New RPC URL** | `[https://rpc-amoy.polygon.technology](https://rpc-amoy.polygon.technology)` |
+| **Chain ID** | `80002` (Hex: `0x13882`) |
+| **Currency Symbol** | POL |
+| **Block Explorer** | `[https://amoy.polygonscan.com/](https://amoy.polygonscan.com/)` |
+
+---
+
+## 4. Requisiti Non Funzionali e Stack Tecnologico
+
+| Ambito | Specifica Tecnica |
+| --- | --- |
+| **Architettura** | Client-side pura (SPA), nessuna infrastruttura di backend o database centralizzato richiesto. |
+| **Framework** | Vite + React (ottimizzato per velocità e leggerezza). |
+| **Libreria Web3** | Ethers.js (v6) per la gestione del provider e l'istanza dinamica del contratto. |
+| **Sicurezza** | Nessuna memorizzazione di chiavi private sul client; tutte le transazioni richiedono l'approvazione esplicita tramite l'estensione MetaMask. |

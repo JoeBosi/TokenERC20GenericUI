@@ -1,0 +1,25 @@
+{
+  "network": "amoy-fresh",
+  "chainId": 80002,
+  "deployer": "0x2D6eCb55771f262f99F9dF8163910B1968a7862F",
+  "timestamp": "2026-05-18T07:39:16.913Z",
+  "contracts": {
+    "Token": {
+      "proxy": "0x55F7DaBE49cc7947D6ac12014Af40305176581eB",
+      "implementation": "0xeD7741db36Cf22e9D339A48e767313f33EFAb360",
+      "type": "UUPS"
+    }
+  },
+  "constructorArgs": [
+    "IGE Token",
+    "IGT",
+    "10000000000000000000000000000000000000000",
+    "0x2d6ecb55771f262f99f9df8163910b1968a7862f",
+    "10",
+    "0x2d6ecb55771f262f99f9df8163910b1968a7862f",
+    "0x2d6ecb55771f262f99f9df8163910b1968a7862f"
+  ],
+  "explorer": "https://amoy.polygonscan.com/address/0x55F7DaBE49cc7947D6ac12014Af40305176581eB",
+  "version": "1.6.3-security-fixes",
+  "status": "fresh-deployment-with-fixes"
+}

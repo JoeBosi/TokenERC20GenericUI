@@ -1,0 +1,24 @@
+{
+  "network": "amoy-test",
+  "chainId": 80002,
+  "deployer": "0x2D6eCb55771f262f99F9dF8163910B1968a7862F",
+  "timestamp": "2026-05-17T20:29:45.402Z",
+  "contracts": {
+    "Token": {
+      "proxy": "0xBF013882D981Fb04484377e45ED5f35Ff099869e",
+      "implementation": "0xE7012CC6a504Fa5fCcb9D66480E2a5F25B323C48",
+      "type": "UUPS"
+    }
+  },
+  "constructorArgs": [
+    "IGE Token",
+    "IGT",
+    "10000000000000000000000",
+    "0x2d6ecb55771f262f99f9df8163910b1968a7862f",
+    "10",
+    "0x2d6ecb55771f262f99f9df8163910b1968a7862f",
+    "0x2d6ecb55771f262f99f9df8163910b1968a7862f"
+  ],
+  "explorer": "https://amoy.polygonscan.com/address/0xBF013882D981Fb04484377e45ED5f35Ff099869e",
+  "testResults": "Comprehensive fixes tested"
+}

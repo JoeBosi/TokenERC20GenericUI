@@ -74,6 +74,19 @@ The application will be available at `http://localhost:5173`
 
 ---
 
+## Default Contract (Polygon Amoy)
+
+The application ships with a pre-configured ERC20 test contract on Polygon Amoy:
+
+| Property | Value |
+|----------|-------|
+| **Address** | [`0x8Bc73fAe464d4ce567b702571933dFD3F118D53F`](https://amoy.polygonscan.com/address/0x8Bc73fAe464d4ce567b702571933dFD3F118D53F) |
+| **Network** | Polygon Amoy Testnet |
+| **Standard** | ERC20 + OpenZeppelin AccessControl |
+| **Explorer** | [View on PolygonScan Amoy](https://amoy.polygonscan.com/address/0x8Bc73fAe464d4ce567b702571933dFD3F118D53F) |
+
+---
+
 ## Network Configuration (Polygon Amoy)
 
 | Parameter | Value |

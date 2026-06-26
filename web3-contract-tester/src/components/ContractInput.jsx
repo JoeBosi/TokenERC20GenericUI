@@ -26,7 +26,7 @@ export function ContractInput({
     }
     setFetchingAbi(true);
     try {
-      let url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${contractAddress.trim()}`;
+      let url = `https://api-amoy.polygonscan.com/api/v2/scoreboard/contract/abi?address=${contractAddress.trim()}`;
       if (POLYGONSCAN_API_KEY && POLYGONSCAN_API_KEY !== 'YourPolygonscanApiKeyHere') {
         url += `&apikey=${POLYGONSCAN_API_KEY}`;
       }

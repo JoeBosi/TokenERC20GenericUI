@@ -778,7 +778,10 @@ function App() {
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
               </svg>
             </div>
-            <h1 style={styles.logoText}>Web3 Contract Tester</h1>
+            <div style={styles.logoTitles}>
+              <h1 style={styles.logoText}>Web3 Contract Tester</h1>
+              <span style={styles.logoAuthor}>Giuseppe Bosi</span>
+            </div>
           </div>
           {isConnected && (
             <div style={styles.headerRight}>
@@ -885,9 +888,9 @@ function App() {
                   <line x1="9" y1="21" x2="9" y2="9"/>
                 </svg>
               </div>
-              <p style={styles.emptyTitle}>Connetti il tuo wallet</p>
+              <p style={styles.emptyTitle}>Connect your wallet</p>
               <p style={styles.emptySubtitle}>
-                Connetti MetaMask e configura un contratto per iniziare il testing
+                Connect MetaMask and configure a contract to start testing
               </p>
             </div>
           )}
@@ -950,6 +953,18 @@ const styles = {
     fontWeight: 600,
     color: '#000',
     margin: 0,
+  },
+  logoTitles: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0px',
+  },
+  logoAuthor: {
+    fontSize: '9px',
+    fontWeight: 400,
+    color: '#AEAEB2',
+    letterSpacing: '0.2px',
+    marginTop: '-1px',
   },
   networkBadge: {
     display: 'flex',

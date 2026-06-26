@@ -165,7 +165,6 @@ export function useContract(provider, signer, fetchBalances) {
           values[method.name] = result;
         }
       } catch (err) {
-        console.log(`[DEBUG] Auto-read failed for ${method.name}:`, err.message);
         values[method.name] = '—';
       }
     }
@@ -194,28 +193,20 @@ export function useContract(provider, signer, fetchBalances) {
   }, [contract, readMethods, autoReadViewMethods]);
 
   useEffect(() => {
-    console.log('[DEBUG] Initializing useContract...');
     const savedAddress = localStorage.getItem(STORAGE_KEY_ADDRESS);
     const savedAbi = localStorage.getItem(STORAGE_KEY_ABI);
     
-    console.log('[DEBUG] Saved address:', savedAddress);
-    console.log('[DEBUG] Saved ABI length:', savedAbi?.length);
-    
     // Use saved values if available and not empty, otherwise use defaults
     if (savedAddress && savedAddress.trim() !== '') {
-      console.log('[DEBUG] Using saved address');
       setContractAddress(savedAddress);
     } else {
-      console.log('[DEBUG] Using default address:', DEFAULT_CONTRACT_ADDRESS);
       setContractAddress(DEFAULT_CONTRACT_ADDRESS);
     }
     
     if (savedAbi && savedAbi.trim() !== '' && savedAbi !== '[]') {
-      console.log('[DEBUG] Using saved ABI');
       setAbi(savedAbi);
     } else {
       const defaultAbiString = JSON.stringify(DEFAULT_ABI, null, 2);
-      console.log('[DEBUG] Using default ABI, length:', defaultAbiString.length);
       setAbi(defaultAbiString);
     }
   }, []);
@@ -226,16 +217,7 @@ export function useContract(provider, signer, fetchBalances) {
   }, [contractAddress, abi]);
 
   useEffect(() => {
-    console.log('[DEBUG] useContract effect triggered:', { 
-      hasAbi: !!abi, 
-      abiLength: abi?.length, 
-      contractAddress, 
-      hasProvider: !!provider,
-      hasSigner: !!signer 
-    });
-    
     if (!abi || !contractAddress) {
-      console.log('[DEBUG] Missing abi or contractAddress');
       setContract(null);
       setParsedAbi([]);
       setReadMethods([]);
@@ -245,14 +227,11 @@ export function useContract(provider, signer, fetchBalances) {
 
     try {
       const parsed = JSON.parse(abi);
-      console.log('[DEBUG] ABI parsed, items:', parsed.length);
       setParsedAbi(parsed);
       setError(null);
 
       // Filter only functions
       const functions = Array.isArray(parsed) ? parsed.filter(item => item.type === 'function') : [];
-      console.log('[DEBUG] Functions found:', functions.length);
-      console.log('[DEBUG] Functions:', functions.map(f => f.name));
       
       const read = functions.filter(
         fn => fn.stateMutability === 'view' || fn.stateMutability === 'pure'
@@ -262,16 +241,12 @@ export function useContract(provider, signer, fetchBalances) {
         fn => fn.stateMutability === 'nonpayable' || fn.stateMutability === 'payable'
       );
 
-      console.log('[DEBUG] Read methods:', read.length, read.map(f => f.name));
-      console.log('[DEBUG] Write methods:', write.length, write.map(f => f.name));
-
       setReadMethods(read);
       setWriteMethods(write);
 
       // Create contract instance if provider/signer available
       if (provider || signer) {
         const contractInstance = new ethers.Contract(contractAddress, parsed, signer || provider);
-        console.log('[DEBUG] Contract instance created');
         setContract(contractInstance);
         
         // Auto-read view methods and fetch balances
@@ -283,11 +258,9 @@ export function useContract(provider, signer, fetchBalances) {
           }
         }, 100);
       } else {
-        console.log('[DEBUG] No provider/signer, contract methods available but not executable');
         setContract(null);
       }
     } catch (err) {
-      console.error('[DEBUG] ABI parse error:', err);
       setError('ABI JSON non valido: ' + err.message);
       setContract(null);
       setParsedAbi([]);

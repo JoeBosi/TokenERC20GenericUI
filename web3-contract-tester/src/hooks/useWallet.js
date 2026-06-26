@@ -14,8 +14,8 @@ const POLYGON_AMOY_PARAMS = {
   blockExplorerUrls: ['https://amoy.polygonscan.com/'],
 };
 
-const DEV_PRIVATE_KEY = typeof __PRIVATE_KEY__ !== 'undefined' ? __PRIVATE_KEY__ : '';
-const DEV_ADDRESS = typeof __ADDRES__ !== 'undefined' ? __ADDRES__ : '';
+const DEV_PRIVATE_KEY = import.meta.env.VITE_DEV_PRIVATE_KEY || '';
+const DEV_ADDRESS = import.meta.env.VITE_DEV_ADDRESS || '';
 const RPC_URL = 'https://rpc-amoy.polygon.technology';
 
 export function useWallet() {

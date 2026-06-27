@@ -24,22 +24,35 @@ export function ContractInput({
       showToast('Enter a valid contract address first.');
       return;
     }
-    if (!POLYGONSCAN_API_KEY || POLYGONSCAN_API_KEY === 'YourPolygonscanApiKeyHere') {
-      showToast('Missing Polygonscan API key. Set VITE_POLYGONSCAN_API_KEY in your environment.');
+    const hasLocalKey =
+      POLYGONSCAN_API_KEY && POLYGONSCAN_API_KEY !== 'YourPolygonscanApiKeyHere';
+    if (import.meta.env.PROD && !hasLocalKey) {
+      // In production the key lives only on the server (see /SECRETS.md), so a
+      // missing local key is fine — but if the proxy itself is unconfigured the
+      // request below will report it. No client-side key check needed here.
+    } else if (!hasLocalKey) {
+      showToast('Missing Polygonscan API key. Set VITE_POLYGONSCAN_API_KEY in your .env for local dev.');
       return;
     }
     setFetchingAbi(true);
     try {
-      // Etherscan API V2 unified endpoint (chainid 80002 = Polygon Amoy).
-      // The legacy api-amoy.polygonscan.com V1 endpoint is deprecated.
-      const url = `https://api.etherscan.io/v2/api?chainid=80002&module=contract&action=getabi&address=${contractAddress.trim()}&apikey=${POLYGONSCAN_API_KEY}`;
+      const address = contractAddress.trim();
+      let url;
+      if (import.meta.env.DEV && hasLocalKey) {
+        // Local dev: call Etherscan V2 directly with the git-ignored local key.
+        // (A dev bundle is never shipped to users, so this is safe in dev only.)
+        url = `https://api.etherscan.io/v2/api?chainid=80002&module=contract&action=getabi&address=${address}&apikey=${POLYGONSCAN_API_KEY}`;
+      } else {
+        // Production: hit our same-origin proxy so the key never reaches the browser.
+        url = `/api/etherscan?action=getabi&address=${encodeURIComponent(address)}`;
+      }
       const res = await fetch(url);
       const data = await res.json();
       if (data.status === '1' && data.result) {
         setAbi(data.result);
         showToast('ABI loaded successfully!', 'success');
       } else {
-        const msg = data.result || 'ABI not found. Make sure the contract is verified on Amoy Polygonscan.';
+        const msg = data.result || data.error || 'ABI not found. Make sure the contract is verified on Amoy Polygonscan.';
         showToast(msg);
       }
     } catch (e) {

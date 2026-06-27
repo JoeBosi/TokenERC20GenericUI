@@ -47,6 +47,10 @@ export function ContractInput({
 }) {
   const [fetchingAbi, setFetchingAbi] = useState(false);
   const [toast, setToast] = useState(null);
+  // Unlike the toast (which auto-dismisses), this stays on screen as long as the
+  // loaded contract is a proxy — the user needs to keep seeing "the real contract
+  // is at this other address" while they work, not just for 3.5 seconds.
+  const [proxyNotice, setProxyNotice] = useState(null);
 
   const showToast = (message, type = 'error') => {
     setToast({ message, type });
@@ -54,6 +58,7 @@ export function ContractInput({
   };
 
   const fetchAbiFromExplorer = async () => {
+    setProxyNotice(null);
     if (!contractAddress || contractAddress.trim().length < 10) {
       showToast('Enter a valid contract address first.');
       return;
@@ -90,29 +95,36 @@ export function ContractInput({
               const implData = await implRes.json();
               if (implData.status === '1' && implData.result && countFunctions(implData.result) > 0) {
                 setAbi(implData.result);
-                showToast(
-                  `This address is a proxy — loaded the implementation ABI from ${proxyInfo.implementation.slice(0, 6)}...${proxyInfo.implementation.slice(-4)}.`,
-                  'success'
-                );
+                showToast('ABI loaded successfully!', 'success');
+                setProxyNotice({
+                  type: 'info',
+                  message: `Proxy contract detected. The real contract (with the callable functions) lives at ${proxyInfo.implementation} — its ABI was loaded automatically. Calls are still sent to the address above; the proxy forwards them.`,
+                });
                 implAbiLoaded = true;
               }
             }
           } catch {
-            // Fall through to the explanatory error below.
+            // Fall through to the explanatory notice below.
           }
           if (!implAbiLoaded) {
             if (proxyInfo.implementation) {
-              showToast(
-                `ABI not retrievable: this is a proxy contract pointing to ${proxyInfo.implementation.slice(0, 6)}...${proxyInfo.implementation.slice(-4)}, but that implementation contract isn't verified on Polygonscan. Verify the implementation's source code there, or use a known ABI (e.g. "ERC20 Preset") instead.`
-              );
+              showToast('This address is a proxy — see the note below.');
+              setProxyNotice({
+                type: 'warning',
+                message: `Proxy contract detected. The real contract is at ${proxyInfo.implementation}, but its source code isn't verified on Polygonscan, so its ABI can't be retrieved automatically. Verify it there, or use a known ABI (e.g. "ERC20 Preset") instead.`,
+              });
             } else if (proxyInfo.isProxy) {
-              showToast(
-                'ABI not retrievable: this is a proxy contract, but it isn\'t linked to an implementation on Polygonscan. Link it ("Is this a proxy?" on Polygonscan) or fetch the implementation address\'s ABI directly.'
-              );
+              showToast('This address is a proxy — see the note below.');
+              setProxyNotice({
+                type: 'warning',
+                message: 'Proxy contract detected, but it isn\'t linked to an implementation address on Polygonscan yet, so the real ABI can\'t be retrieved automatically. Link it there ("Is this a proxy?") or paste the implementation\'s ABI manually.',
+              });
             } else {
-              showToast(
-                'This contract has no callable functions — it looks like a proxy whose implementation isn\'t linked on Polygonscan. Find the implementation address ("Read as Proxy" on Polygonscan) and fetch its ABI instead.'
-              );
+              showToast('This contract has no callable functions — see the note below.');
+              setProxyNotice({
+                type: 'warning',
+                message: 'This contract has no callable functions. It looks like a proxy, but Polygonscan doesn\'t report an implementation link for it. Find the implementation address ("Read as Proxy" on Polygonscan) and fetch its ABI directly.',
+              });
             }
           }
         }
@@ -154,6 +166,17 @@ export function ContractInput({
           </div>
         )}
 
+        {proxyNotice && (
+          <div style={{
+            ...styles.toast,
+            background: proxyNotice.type === 'info' ? 'rgba(0,122,255,0.08)' : 'rgba(255,149,0,0.10)',
+            color: proxyNotice.type === 'info' ? '#0066CC' : '#B25E00',
+            border: `0.5px solid ${proxyNotice.type === 'info' ? 'rgba(0,122,255,0.25)' : 'rgba(255,149,0,0.3)'}`,
+          }}>
+            {proxyNotice.type === 'info' ? '🔗 ' : '⚠️ '}{proxyNotice.message}
+          </div>
+        )}
+
         <div style={styles.content}>
           <div style={styles.field}>
             <label style={styles.label}>Contract Address</label>
@@ -161,7 +184,10 @@ export function ContractInput({
               <input
                 type="text"
                 value={contractAddress}
-                onChange={(e) => setContractAddress(e.target.value)}
+                onChange={(e) => {
+                  setProxyNotice(null);
+                  setContractAddress(e.target.value);
+                }}
                 placeholder="0x..."
                 style={{ ...styles.input, flex: 1 }}
               />
@@ -213,7 +239,7 @@ export function ContractInput({
           </div>
 
           {(contractAddress || abi) && (
-            <button onClick={onClear} style={styles.clearBtn}>
+            <button onClick={() => { setProxyNotice(null); onClear(); }} style={styles.clearBtn}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>

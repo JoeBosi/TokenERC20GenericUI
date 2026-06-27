@@ -1,4 +1,4 @@
-// Tier 1 secret proxy (see /SECRETS.md).
+// Tier 1 secret proxy (see /docs/SECRETS.md).
 // The browser calls this same-origin endpoint instead of Etherscan directly,
 // so the API key stays on the server and never reaches the client bundle.
 

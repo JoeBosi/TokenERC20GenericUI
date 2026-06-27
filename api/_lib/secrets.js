@@ -2,7 +2,7 @@
 // for secrets directly — everything goes through getSecret(). To graduate a
 // secret from a host env var (Tier 1) to Vault / AWS Secrets Manager (Tier 2)
 // or to KMS sign-in-place (Tier 3), you replace ONLY this file's body; the
-// proxy and the frontend never change. See /SECRETS.md.
+// proxy and the frontend never change. See /docs/SECRETS.md.
 
 const cache = new Map();
 

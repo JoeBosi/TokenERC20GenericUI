@@ -158,7 +158,7 @@ function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles
         <div style={roleStyles.customInputRow}>
           <input
             type="text"
-            placeholder="es. WHITELIST_ROLE"
+            placeholder="e.g. WHITELIST_ROLE"
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
             style={roleStyles.customInput}

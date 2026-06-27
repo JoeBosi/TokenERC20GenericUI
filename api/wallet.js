@@ -1,4 +1,4 @@
-// Key-protection MVP endpoint (see /SECRETS.md).
+// Key-protection MVP endpoint (see /docs/SECRETS.md and /docs/protected-wallet-mvp.md).
 //
 //   GET  /api/wallet            -> { address, provider }   (no key ever exposed)
 //   POST /api/wallet { message } -> { address, signature }  (signed server-side)

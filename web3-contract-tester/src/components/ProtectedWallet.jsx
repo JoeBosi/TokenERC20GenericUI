@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-// Key-protection MVP panel (see /SECRETS.md).
+// Key-protection MVP panel (see /docs/protected-wallet-mvp.md and /docs/SECRETS.md).
 // Demonstrates the core promise: the app can show a wallet address and produce
 // valid signatures from it, while the PRIVATE KEY never reaches the browser —
 // it lives behind the server-side signer (/api/wallet), today simulated, later

@@ -2,7 +2,7 @@
   "name": "tokengenericui-functions",
   "private": true,
   "type": "commonjs",
-  "description": "Serverless API functions for the key-protection MVP (see SECRETS.md). The frontend lives in web3-contract-tester/.",
+  "description": "Serverless API functions for the key-protection MVP (see docs/SECRETS.md). The frontend lives in web3-contract-tester/.",
   "dependencies": {
     "ethers": "^6.13.0"
   }

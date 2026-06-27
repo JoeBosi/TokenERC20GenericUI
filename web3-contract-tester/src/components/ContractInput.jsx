@@ -1,8 +1,42 @@
 import React, { useState, useEffect } from 'react';
 
 const POLYGONSCAN_API_KEY = import.meta.env.VITE_POLYGONSCAN_API_KEY || '';
+const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
-export function ContractInput({ 
+function countFunctions(abiJsonString) {
+  try {
+    const parsed = JSON.parse(abiJsonString);
+    return Array.isArray(parsed) ? parsed.filter((item) => item.type === 'function').length : -1;
+  } catch {
+    return -1;
+  }
+}
+
+function buildEtherscanUrl(action, address, hasLocalKey) {
+  if (import.meta.env.DEV && hasLocalKey) {
+    // Local dev: call Etherscan V2 directly with the git-ignored local key.
+    return `https://api.etherscan.io/v2/api?chainid=80002&module=contract&action=${action}&address=${address}&apikey=${POLYGONSCAN_API_KEY}`;
+  }
+  // Production: hit our same-origin proxy so the key never reaches the browser (see /docs/SECRETS.md).
+  return `/api/etherscan?action=${action}&address=${encodeURIComponent(address)}`;
+}
+
+// EIP-1967-style proxies verify with an ABI that has no callable functions
+// (just constructor/errors/fallback) — the real functions live on the
+// implementation contract. Etherscan exposes "is this a proxy" + the linked
+// implementation via getsourcecode's "Proxy" / "Implementation" fields.
+async function fetchProxyInfo(address, hasLocalKey) {
+  const res = await fetch(buildEtherscanUrl('getsourcecode', address, hasLocalKey));
+  const data = await res.json();
+  const info = Array.isArray(data.result) ? data.result[0] : null;
+  const impl = info && info.Implementation;
+  return {
+    isProxy: !!info && info.Proxy === '1',
+    implementation: ADDRESS_RE.test(impl || '') ? impl : null,
+  };
+}
+
+export function ContractInput({
   contractAddress, 
   setContractAddress, 
   abi, 
@@ -27,7 +61,7 @@ export function ContractInput({
     const hasLocalKey =
       POLYGONSCAN_API_KEY && POLYGONSCAN_API_KEY !== 'YourPolygonscanApiKeyHere';
     if (import.meta.env.PROD && !hasLocalKey) {
-      // In production the key lives only on the server (see /SECRETS.md), so a
+      // In production the key lives only on the server (see /docs/SECRETS.md), so a
       // missing local key is fine — but if the proxy itself is unconfigured the
       // request below will report it. No client-side key check needed here.
     } else if (!hasLocalKey) {
@@ -37,20 +71,51 @@ export function ContractInput({
     setFetchingAbi(true);
     try {
       const address = contractAddress.trim();
-      let url;
-      if (import.meta.env.DEV && hasLocalKey) {
-        // Local dev: call Etherscan V2 directly with the git-ignored local key.
-        // (A dev bundle is never shipped to users, so this is safe in dev only.)
-        url = `https://api.etherscan.io/v2/api?chainid=80002&module=contract&action=getabi&address=${address}&apikey=${POLYGONSCAN_API_KEY}`;
-      } else {
-        // Production: hit our same-origin proxy so the key never reaches the browser.
-        url = `/api/etherscan?action=getabi&address=${encodeURIComponent(address)}`;
-      }
-      const res = await fetch(url);
+      const res = await fetch(buildEtherscanUrl('getabi', address, hasLocalKey));
       const data = await res.json();
       if (data.status === '1' && data.result) {
-        setAbi(data.result);
-        showToast('ABI loaded successfully!', 'success');
+        if (countFunctions(data.result) > 0) {
+          setAbi(data.result);
+          showToast('ABI loaded successfully!', 'success');
+        } else {
+          // No callable functions — likely a proxy (constructor/errors/fallback only).
+          // Try to resolve and load the linked implementation's ABI instead, while
+          // keeping contractAddress pointed at the proxy (that's where calls go).
+          let implAbiLoaded = false;
+          let proxyInfo = { isProxy: false, implementation: null };
+          try {
+            proxyInfo = await fetchProxyInfo(address, hasLocalKey);
+            if (proxyInfo.implementation) {
+              const implRes = await fetch(buildEtherscanUrl('getabi', proxyInfo.implementation, hasLocalKey));
+              const implData = await implRes.json();
+              if (implData.status === '1' && implData.result && countFunctions(implData.result) > 0) {
+                setAbi(implData.result);
+                showToast(
+                  `This address is a proxy — loaded the implementation ABI from ${proxyInfo.implementation.slice(0, 6)}...${proxyInfo.implementation.slice(-4)}.`,
+                  'success'
+                );
+                implAbiLoaded = true;
+              }
+            }
+          } catch {
+            // Fall through to the explanatory error below.
+          }
+          if (!implAbiLoaded) {
+            if (proxyInfo.implementation) {
+              showToast(
+                `ABI not retrievable: this is a proxy contract pointing to ${proxyInfo.implementation.slice(0, 6)}...${proxyInfo.implementation.slice(-4)}, but that implementation contract isn't verified on Polygonscan. Verify the implementation's source code there, or use a known ABI (e.g. "ERC20 Preset") instead.`
+              );
+            } else if (proxyInfo.isProxy) {
+              showToast(
+                'ABI not retrievable: this is a proxy contract, but it isn\'t linked to an implementation on Polygonscan. Link it ("Is this a proxy?" on Polygonscan) or fetch the implementation address\'s ABI directly.'
+              );
+            } else {
+              showToast(
+                'This contract has no callable functions — it looks like a proxy whose implementation isn\'t linked on Polygonscan. Find the implementation address ("Read as Proxy" on Polygonscan) and fetch its ABI instead.'
+              );
+            }
+          }
+        }
       } else {
         const msg = data.result || data.error || 'ABI not found. Make sure the contract is verified on Amoy Polygonscan.';
         showToast(msg);

@@ -1,4 +1,5 @@
-// Single seam for SIGNING — the core of the key-protection MVP (see /SECRETS.md).
+// Single seam for SIGNING — the core of the key-protection MVP
+// (see /docs/SECRETS.md and /docs/protected-wallet-mvp.md).
 //
 // The rest of the system NEVER holds a private key. It calls signer.getAddress()
 // / signer.signMessage() / signer.signTransaction(). The actual key lives behind

@@ -151,8 +151,8 @@ web3-contract-tester/
 
 ## Security Considerations
 
-- **No Private Keys Stored**: All transactions require explicit MetaMask approval
-- **Client-Side Only**: No backend or centralized database
+- **No Private Keys Stored In The Browser**: MetaMask transactions require explicit wallet approval; the browser never holds a private key
+- **Serverless API for Secrets**: a small set of Vercel serverless functions (`/api`) keep the Etherscan API key and the demo signing key server-side — see [Secret Management Strategy](docs/SECRETS.md) and [Protected Wallet MVP](docs/protected-wallet-mvp.md)
 - **LocalStorage Warning**: Contract addresses and ABIs are stored locally; clear browser data to remove
 - **Testnet Only**: Designed for Polygon Amoy testnet — do not use with mainnet funds
 
@@ -160,8 +160,13 @@ web3-contract-tester/
 
 ## Documentation
 
-- [Testing Guide](./web3-contract-tester/TESTING.md) - Manual testing procedures
-- [Architecture](./ARCHITECTURE.md) - Technical architecture and design decisions
+All project and educational documentation lives in [`docs/`](docs/README.md):
+
+- [Documentation Index](docs/README.md) - what's in this folder and where to start
+- [Protected Wallet MVP](docs/protected-wallet-mvp.md) - how the key-protection demo works, libraries, data flow, security model, vulnerabilities
+- [Secret Management Strategy](docs/SECRETS.md) - the tiered approach for protecting secrets, from API keys to private keys
+- [Architecture](docs/ARCHITECTURE.md) - Technical architecture and design decisions
+- [Testing Guide](docs/TESTING.md) - Manual testing procedures and 100% Dev Mode coverage matrix
 
 ---
 

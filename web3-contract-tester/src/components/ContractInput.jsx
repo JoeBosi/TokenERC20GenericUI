@@ -24,12 +24,15 @@ export function ContractInput({
       showToast('Enter a valid contract address first.');
       return;
     }
+    if (!POLYGONSCAN_API_KEY || POLYGONSCAN_API_KEY === 'YourPolygonscanApiKeyHere') {
+      showToast('Missing Polygonscan API key. Set VITE_POLYGONSCAN_API_KEY in your environment.');
+      return;
+    }
     setFetchingAbi(true);
     try {
-      let url = `https://api-amoy.polygonscan.com/api?module=contract&action=getabi&address=${contractAddress.trim()}`;
-      if (POLYGONSCAN_API_KEY && POLYGONSCAN_API_KEY !== 'YourPolygonscanApiKeyHere') {
-        url += `&apikey=${POLYGONSCAN_API_KEY}`;
-      }
+      // Etherscan API V2 unified endpoint (chainid 80002 = Polygon Amoy).
+      // The legacy api-amoy.polygonscan.com V1 endpoint is deprecated.
+      const url = `https://api.etherscan.io/v2/api?chainid=80002&module=contract&action=getabi&address=${contractAddress.trim()}&apikey=${POLYGONSCAN_API_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.status === '1' && data.result) {

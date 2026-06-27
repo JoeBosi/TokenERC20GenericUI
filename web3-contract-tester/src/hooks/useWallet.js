@@ -46,11 +46,11 @@ export function useWallet() {
             });
             return true;
           } catch (addError) {
-            setError('Impossibile aggiungere la rete Polygon Amoy');
+            setError('Could not add the Polygon Amoy network');
             return false;
           }
         }
-        setError('Impossibile switchare alla rete Polygon Amoy');
+        setError('Could not switch to the Polygon Amoy network');
         return false;
       }
     }
@@ -97,7 +97,7 @@ export function useWallet() {
 
   const connect = useCallback(async (tokenContract = null) => {
     if (!window.ethereum) {
-      setError('MetaMask non è installato. Installa MetaMask per continuare.');
+      setError('MetaMask is not installed. Install MetaMask to continue.');
       return;
     }
 
@@ -143,7 +143,7 @@ export function useWallet() {
         }
       }
     } catch (err) {
-      setError(err.message || 'Errore durante la connessione');
+      setError(err.message || 'Connection error');
     } finally {
       setIsConnecting(false);
     }
@@ -160,7 +160,7 @@ export function useWallet() {
 
   const connectDev = useCallback(async () => {
     if (!DEV_PRIVATE_KEY) {
-      setError('Chiave privata non configurata. Verifica il file .env');
+      setError('Dev private key not configured. Check your .env file');
       return;
     }
 
@@ -191,7 +191,7 @@ export function useWallet() {
       setSigner(devWallet);
       setIsDevMode(true);
     } catch (err) {
-      setError('Errore connessione wallet dev: ' + (err.message || 'sconosciuto'));
+      setError('Dev wallet connection error: ' + (err.message || 'unknown'));
     } finally {
       setIsConnecting(false);
     }
@@ -265,7 +265,7 @@ export function useWallet() {
           }
         }
       } catch (err) {
-        console.error('Errore verifica connessione:', err);
+        console.error('Connection check error:', err);
       }
     };
     

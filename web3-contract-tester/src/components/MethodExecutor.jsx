@@ -43,7 +43,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       const args = method.inputs.map((_, index) => {
         const value = inputs[index] || '';
         if (value === '') {
-          throw new Error(`Parametro ${index + 1} mancante`);
+          throw new Error(`Parameter ${index + 1} is missing`);
         }
         return value;
       });
@@ -65,24 +65,24 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
               const parsed = contract.interface.parseLog(log);
               if (!parsed) return null;
               
-              // Extract named args only, convert values to strings
+              // Extract named args from the event fragment. In ethers v6 a Result
+              // exposes positional values; named keys are taken from the fragment
+              // inputs (iterating Object.entries skips them and yields nothing).
               const args = {};
-              if (parsed.args) {
-                for (const [key, value] of Object.entries(parsed.args)) {
-                  // Skip numeric indices, keep only named properties
-                  if (!isNaN(key)) continue;
-                  // Format value based on type
-                  if (typeof value === 'bigint') {
-                    args[key] = value.toString();
-                  } else if (ethers.isAddress(value)) {
-                    args[key] = value;
-                  } else if (typeof value === 'object' && value !== null) {
-                    args[key] = JSON.stringify(value);
-                  } else {
-                    args[key] = String(value);
-                  }
+              const eventInputs = parsed.fragment?.inputs || [];
+              eventInputs.forEach((inp, i) => {
+                const key = inp.name || `arg${i}`;
+                const value = parsed.args?.[i];
+                if (typeof value === 'bigint') {
+                  args[key] = value.toString();
+                } else if (typeof value === 'string' && ethers.isAddress(value)) {
+                  args[key] = value;
+                } else if (typeof value === 'object' && value !== null) {
+                  args[key] = JSON.stringify(value);
+                } else {
+                  args[key] = String(value);
                 }
-              }
+              });
               
               return {
                 name: parsed.name || `Event ${index}`,
@@ -148,19 +148,24 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
     return 'text';
   };
 
-  // Known error selectors for common OpenZeppelin errors
+  // Known error selectors for common OpenZeppelin errors (v4 strings + v5 custom errors)
   const KNOWN_ERROR_SELECTORS = {
-    '0xe2517d3f': 'Accesso negato: indirizzo non autorizzato',
-    '0x0f492d86': 'Accesso negato: ruolo richiesto mancante',
-    '0xd7a6a93f': 'Account bloccato (blacklist)',
-    '0x143c6fd7': 'Account frozen (freeze)',
-    '0xd93c0665': 'Contratto in pausa (paused)',
-    '0x5e60214d': 'Nonce non valido',
-    '0x074b1308': 'Firma non valida',
-    '0x8baa579f': 'Insufficiente balance',
+    '0xe2517d3f': 'Access denied: unauthorized account',
+    '0x0f492d86': 'Access denied: missing required role',
+    '0xd7a6a93f': 'Account blocked (blacklist)',
+    '0x143c6fd7': 'Account frozen',
+    '0xd93c0665': 'Contract is paused',
+    '0x5e60214d': 'Invalid nonce',
+    '0x074b1308': 'Invalid signature',
+    '0x8baa579f': 'Insufficient balance',
     '0x3966b699': 'SafeERC20: low-level call failed',
     '0x64128d11': 'ERC20: insufficient allowance',
     '0x4b637e8a': 'ERC20: transfer amount exceeds balance',
+    // OpenZeppelin v5 custom errors
+    '0xe450d38c': 'ERC20: insufficient balance',
+    '0xfb8f41b2': 'ERC20: insufficient allowance',
+    '0x96c6fd1e': 'ERC20: invalid sender',
+    '0xec442f05': 'ERC20: invalid receiver',
     '0x7939f424': 'ERC721: transfer of token that is not own',
     '0x30cd7471': 'ERC721: approve caller is not owner nor approved',
     '0x150b5f0b': 'ERC721: operator query for nonexistent token',
@@ -178,7 +183,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       if (hexMatch) data = hexMatch[0];
     }
     
-    if (!data) return err?.reason || err?.message || 'Errore sconosciuto';
+    if (!data) return err?.reason || err?.message || 'Unknown error';
     
     // Extract selector (first 10 chars: 0x + 8 hex)
     const selector = data.toString().slice(0, 10).toLowerCase();
@@ -215,7 +220,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       }
     }
     
-    return err?.reason || err?.message || 'Errore sconosciuto';
+    return err?.reason || err?.message || 'Unknown error';
   };
 
   // Helper to format event values for display
@@ -230,7 +235,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       return `${value.slice(0, 6)}...${value.slice(-4)}`;
     }
     if (typeof value === 'boolean') {
-      return value ? '✓ Sì' : '✗ No';
+      return value ? '✓ Yes' : '✗ No';
     }
     if (typeof value === 'object') {
       return JSON.stringify(value, (k, v) => typeof v === 'bigint' ? v.toString() : v, 2);
@@ -292,7 +297,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
             {/* Auto-read value display for methods without inputs */}
             {!hasInputs && isRead && autoReadValues[methodName] && (
               <div style={styles.autoReadValue}>
-                <span style={styles.autoReadLabel}>Valore attuale:</span>
+                <span style={styles.autoReadLabel}>Current value:</span>
                 <span style={styles.autoReadData}>{autoReadValues[methodName]}</span>
               </div>
             )}
@@ -340,7 +345,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
               {isExecuting ? (
                 <span style={styles.loading}>
                   <span style={styles.spinner}></span>
-                  Esecuzione...
+                  Executing...
                 </span>
               ) : (
                 <>
@@ -379,7 +384,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
                     )}
                   </svg>
                   <span style={styles.resultTitle}>
-                    {result.success ? 'Successo' : 'Errore'}
+                    {result.success ? 'Success' : 'Error'}
                   </span>
                   <span style={styles.resultTime}>
                     {new Date(result.timestamp).toLocaleTimeString()}
@@ -397,7 +402,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
                 {/* Events from transaction - Generalized for any ABI */}
                 {result.events && result.events.length > 0 && (
                   <div style={styles.eventsSection}>
-                    <div style={styles.eventsHeader}>📢 Eventi emessi:</div>
+                    <div style={styles.eventsHeader}>📢 Events emitted:</div>
                     {result.events.map((event, idx) => (
                       <div key={idx} style={styles.eventCard}>
                         <div style={styles.eventHeader}>
@@ -446,12 +451,12 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
               </svg>
             </div>
             <div style={styles.titleSection}>
-              <h3 style={styles.title}>Metodi Contratto</h3>
+              <h3 style={styles.title}>Contract Methods</h3>
               <p style={styles.subtitle}>No methods found in ABI</p>
             </div>
           </div>
           <div style={styles.noContract}>
-            <p>Inserisci un ABI valido con funzioni (type: "function")</p>
+            <p>Enter a valid ABI with functions (type: "function")</p>
           </div>
         </div>
       </div>
@@ -492,7 +497,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
             </svg>
           </div>
           <div style={styles.titleSection}>
-            <h3 style={styles.title}>Metodi Contratto</h3>
+            <h3 style={styles.title}>Contract Methods</h3>
           </div>
           <div style={styles.headerBadges}>
             <span style={styles.readBadge}>
@@ -524,7 +529,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
             style={styles.searchInput}
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} style={styles.clearSearch}>×</button>
+            <button onClick={() => setSearchQuery('')} style={styles.clearSearch} title="Clear search" aria-label="Clear search">×</button>
           )}
         </div>
 

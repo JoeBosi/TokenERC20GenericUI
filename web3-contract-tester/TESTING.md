@@ -216,7 +216,7 @@ This document provides manual testing procedures for the Web3 Contract Tester Da
 
 ## Known Limitations
 
-1. **Dev Mode Limitations**: Cannot execute write transactions (no real signer)
+1. **Dev Mode signer**: Dev Mode uses a real `ethers.Wallet` built from `VITE_DEV_PRIVATE_KEY`, so it **can** sign and broadcast write transactions (the wallet must hold POL for gas). Use a throwaway testnet key only.
 2. **Network Limitation**: Currently configured for Polygon Amoy only
 3. **Role Updates**: May require manual refresh after transaction
 4. **Large ABIs**: Very large contracts may impact UI performance
@@ -241,3 +241,34 @@ This document provides manual testing procedures for the Web3 Contract Tester Da
 | 1 | 1000000000000000000 |
 | 10 | 10000000000000000000 |
 | 0.1 | 100000000000000000 |
+
+---
+
+## Dev Mode — 100% Interaction Coverage
+
+Run `npm run dev`, select **Dev Mode**, **Connect Dev Mode** (needs a funded
+`VITE_DEV_PRIVATE_KEY`), then exercise every action below. Status reflects the
+last full pass on Polygon Amoy.
+
+| Area | Action | Expected | Status |
+|------|--------|----------|--------|
+| Protected Wallet | Load address | Address shown, provider tag | ✅ |
+| Protected Wallet | Sign message | Signature returned, recovers to address | ✅ |
+| Wallet | Switch MetaMask/Dev tab | Active tab highlighted | ✅ |
+| Wallet | Connect Dev Mode | `DEV` badge, address, POL balance | ✅ |
+| Wallet | Disconnect | UI resets to mode select | ✅ |
+| ContractInput | Fetch ABI | ABI loaded / clear error toast | ✅ |
+| ContractInput | ERC20 Preset | Methods populate | ✅ |
+| ContractInput | Clear data | Address + ABI cleared | ✅ |
+| MethodExecutor | Auto-read (no-param) | On-chain values shown, 10s refresh | ✅ |
+| MethodExecutor | Execute Read (param) | `balanceOf` returns value | ✅ |
+| MethodExecutor | Execute Write | Tx mined, hash + gasUsed + Success | ✅ |
+| MethodExecutor | Event args | Named args (owner/spender/value) shown | ✅ |
+| MethodExecutor | Error decode | Revert shown with decoded selector | ✅ |
+| MethodExecutor | Search / clear | Filters method list | ✅ |
+| RoleExplorer | Add/remove custom role | keccak256 computed client-side | ✅ |
+| RoleExplorer | Check address (invalid) | Inline "enter a valid address" | ✅ |
+| AddressMonitor | Add address | POL/token balance + roles | ✅ |
+| AddressMonitor | Reset | Confirmation prompt before clearing | ✅ |
+| Header | Copy address | "Address copied" toast | ✅ |
+| Contract | Add to MetaMask | Success/error toast (graceful in Dev) | ✅ |

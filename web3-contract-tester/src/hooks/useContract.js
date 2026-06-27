@@ -157,7 +157,7 @@ export function useContract(provider, signer, fetchBalances) {
           } else if (outputType === 'address') {
             values[method.name] = result;
           } else if (outputType === 'bool') {
-            values[method.name] = result ? 'Sì' : 'No';
+            values[method.name] = result ? 'Yes' : 'No';
           } else {
             values[method.name] = result;
           }
@@ -261,7 +261,7 @@ export function useContract(provider, signer, fetchBalances) {
         setContract(null);
       }
     } catch (err) {
-      setError('ABI JSON non valido: ' + err.message);
+      setError('Invalid ABI JSON: ' + err.message);
       setContract(null);
       setParsedAbi([]);
       setReadMethods([]);
@@ -281,7 +281,7 @@ export function useContract(provider, signer, fetchBalances) {
   }, []);
 
   const watchAsset = useCallback(async () => {
-    if (!contract) throw new Error('Contratto non inizializzato');
+    if (!contract) throw new Error('Contract not initialized');
 
     try {
       const name = await contract.name();
@@ -292,7 +292,7 @@ export function useContract(provider, signer, fetchBalances) {
       if (!window.ethereum) {
         // Dev mode: just show token info
         console.log('[TOKEN INFO]', { name, symbol, decimals, address: contractAddress });
-        throw new Error(`MetaMask non disponibile. Token: ${name} (${symbol}) - ${contractAddress}`);
+        throw new Error(`MetaMask not available. Token: ${name} (${symbol}) - ${contractAddress}`);
       }
 
       await window.ethereum.request({
@@ -308,7 +308,7 @@ export function useContract(provider, signer, fetchBalances) {
         },
       });
     } catch (err) {
-      throw new Error('Errore aggiunta token: ' + err.message);
+      throw new Error('Error adding token: ' + err.message);
     }
   }, [contract, contractAddress]);
 

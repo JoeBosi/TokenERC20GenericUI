@@ -54,9 +54,21 @@ function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles
     checkRoles();
   }, [contract, account, allRoles]);
   
+  const [checkError, setCheckError] = useState(null);
+
   const checkAddressRoles = async () => {
-    if (!contract || !checkAddress || !ethers.isAddress(checkAddress)) return;
-    
+    if (!checkAddress || !ethers.isAddress(checkAddress)) {
+      setCheckError('Enter a valid 0x address first.');
+      setTimeout(() => setCheckError(null), 3000);
+      return;
+    }
+    if (!contract) {
+      setCheckError('Configure a contract first.');
+      setTimeout(() => setCheckError(null), 3000);
+      return;
+    }
+    setCheckError(null);
+
     const results = {};
     for (const [name, hash] of Object.entries(allRoles)) {
       try {
@@ -123,8 +135,11 @@ function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles
             onChange={(e) => setCheckAddress(e.target.value)}
             style={roleStyles.addressInput}
           />
-          <button onClick={checkAddressRoles} style={roleStyles.checkBtn}>✓</button>
+          <button onClick={checkAddressRoles} style={roleStyles.checkBtn} title="Check roles for this address">✓</button>
         </div>
+        {checkError && (
+          <div style={roleStyles.checkErrorMsg}>{checkError}</div>
+        )}
         {addressRoles.address && (
           <div style={roleStyles.addressResult}>
             <p style={roleStyles.addressLabel}>{addressRoles.address.slice(0, 6)}...{addressRoles.address.slice(-4)}</p>
@@ -181,7 +196,7 @@ function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles
             {expandedRole === name && roleMembers[name] && (
               <div style={roleStyles.membersList}>
                 {roleMembers[name].length === 0 ? (
-                  <span style={roleStyles.noMembers}>Nessun membro</span>
+                  <span style={roleStyles.noMembers}>No members</span>
                 ) : (
                   roleMembers[name].map((member, i) => (
                     <span key={i} style={roleStyles.member}>
@@ -278,6 +293,9 @@ function AddressMonitor({ contract, provider, tokenSymbol, allRoles, refreshTrig
   };
   
   const resetAll = () => {
+    if (!window.confirm('Reset all saved data (monitored addresses, custom roles, contract address and ABI)? This cannot be undone.')) {
+      return;
+    }
     setAddresses(['', '', '', '', '']);
     setBalances({});
     setTokenBalances({});
@@ -502,6 +520,11 @@ const roleStyles = {
     paddingBottom: '12px',
     borderBottom: '0.5px solid #E5E5EA',
   },
+  checkErrorMsg: {
+    marginTop: '6px',
+    fontSize: '11px',
+    color: '#FF3B30',
+  },
   inputRow: {
     display: 'flex',
     gap: '6px',
@@ -709,6 +732,31 @@ function App() {
 
   const [tokenSymbol, setTokenSymbol] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Lightweight global toast for actions that otherwise gave no feedback.
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(account);
+      showToast('Address copied to clipboard');
+    } catch {
+      showToast('Could not copy address', 'error');
+    }
+  };
+
+  const handleWatchAsset = async () => {
+    try {
+      await watchAsset();
+      showToast('Token sent to MetaMask — confirm in the popup');
+    } catch (err) {
+      showToast(err?.message || 'Could not add token', 'error');
+    }
+  };
   
   // Custom roles state (shared between RoleExplorer and AddressMonitor)
   const [customRoles, setCustomRoles] = useState(() => {
@@ -771,6 +819,14 @@ function App() {
         }
       `}</style>
       <div style={styles.app}>
+        {toast && (
+          <div style={{
+            ...styles.toast,
+            background: toast.type === 'error' ? 'rgba(255,59,48,0.95)' : 'rgba(52,199,89,0.95)',
+          }}>
+            {toast.message}
+          </div>
+        )}
         <header style={styles.header}>
         <div style={styles.headerContent}>
           <div style={styles.logo}>
@@ -786,7 +842,7 @@ function App() {
           </div>
           {isConnected && (
             <div style={styles.headerRight}>
-              <div style={styles.addressBadge} onClick={() => navigator.clipboard.writeText(account)}>
+              <div style={styles.addressBadge} onClick={copyAddress} title="Copy address to clipboard">
                 <span style={styles.addressLabel}>Wallet</span>
                 <span style={styles.addressValue}>{account}</span>
               </div>
@@ -839,7 +895,7 @@ function App() {
             
             {isConnected && contract && (
               <div style={styles.tokenAction}>
-                <button onClick={watchAsset} style={styles.watchTokenBtn}>
+                <button onClick={handleWatchAsset} style={styles.watchTokenBtn}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="8" r="6"/>
                     <polyline points="8 13 6 21 12 18 18 21 16 13"/>
@@ -911,6 +967,20 @@ function App() {
 }
 
 const styles = {
+  toast: {
+    position: 'fixed',
+    top: '16px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 1000,
+    padding: '10px 18px',
+    borderRadius: '12px',
+    color: '#FFF',
+    fontSize: '13px',
+    fontWeight: 600,
+    boxShadow: '0 6px 20px rgba(0,0,0,0.18)',
+    backdropFilter: 'blur(10px)',
+  },
   app: {
     minHeight: '100vh',
     background: '#F5F5F7',

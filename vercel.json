@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd web3-contract-tester && npm install && npm run build",
   "outputDirectory": "web3-contract-tester/dist",
-  "installCommand": "npm install --prefix web3-contract-tester",
+  "installCommand": "npm install && npm install --prefix web3-contract-tester",
   "framework": null,
   "rewrites": [
     {

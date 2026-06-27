@@ -5,6 +5,7 @@ import { useContract } from './hooks/useContract';
 import { WalletConnector } from './components/WalletConnector';
 import { ContractInput } from './components/ContractInput';
 import { MethodExecutor } from './components/MethodExecutor';
+import { ProtectedWallet } from './components/ProtectedWallet';
 
 // Common OpenZeppelin AccessControl role hashes
 const KNOWN_ROLES = {
@@ -813,6 +814,8 @@ function App() {
       <main style={styles.main}>
         <div className="app-container">
           <div style={styles.leftColumn}>
+            <ProtectedWallet />
+
             <WalletConnector
               account={account}
               isConnecting={isConnecting}

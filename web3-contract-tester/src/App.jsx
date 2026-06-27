@@ -7,15 +7,6 @@ import { ContractInput } from './components/ContractInput';
 import { MethodExecutor } from './components/MethodExecutor';
 import { ProtectedWallet } from './components/ProtectedWallet';
 
-// Common OpenZeppelin AccessControl role hashes
-const KNOWN_ROLES = {
-  'DEFAULT_ADMIN_ROLE': '0x0000000000000000000000000000000000000000000000000000000000000000',
-  'MINTER_ROLE': '0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6',
-  'BURNER_ROLE': '0x3c11d16cbaffd01df69ce1c404f6340ee057497f0f34d91e20d8aa3e5a1c9d1c',
-  'PAUSER_ROLE': '0x65d7a28e3265b37a6474929f336521b332c1681b933f6cb9f3376673440d862a',
-  'TRANSFER_ROLE': '0x5e6d48f5c28b8c65e2a7b5e5d5e8c5d6b7a8e9f0a1b2c3d4e5f6a7b8c9d0e1f',
-};
-
 const STORAGE_KEY_CUSTOM_ROLES = 'w3ct_custom_roles';
 
 function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles }) {
@@ -44,7 +35,7 @@ function RoleExplorer({ contract, account, allRoles, customRoles, setCustomRoles
       
       // Check if contract supports enumerable
       try {
-        await contract.getRoleMemberCount(KNOWN_ROLES.DEFAULT_ADMIN_ROLE);
+        await contract.getRoleMemberCount(ethers.ZeroHash);
         setIsEnumerable(true);
       } catch {
         setIsEnumerable(false);
@@ -239,7 +230,7 @@ function AddressMonitor({ contract, provider, tokenSymbol, allRoles, refreshTrig
       const newTokenBalances = {};
       const newRoles = {};
       
-      const rolesToCheck = allRoles || KNOWN_ROLES;
+      const rolesToCheck = allRoles || {};
       
       for (const addr of addresses) {
         if (!addr || !ethers.isAddress(addr)) continue;
@@ -725,6 +716,7 @@ function App() {
     autoReadValues,
     error: contractError,
     loadErc20Preset,
+    loadIgtAbi,
     clearContract,
     watchAsset,
     refreshReadValues,
@@ -769,8 +761,20 @@ function App() {
     localStorage.setItem(STORAGE_KEY_CUSTOM_ROLES, JSON.stringify(customRoles));
   }, [customRoles]);
   
-  // Combine known and custom roles
-  const allRoles = { ...KNOWN_ROLES, ...customRoles };
+  // Roles come from the loaded contract's own *_ROLE() getters — the real
+  // on-chain hash for whatever roles this specific contract defines — rather
+  // than a static guess table, which can't match every contract and previously
+  // held a wrong BURNER_ROLE hash and a malformed, nonexistent TRANSFER_ROLE.
+  const contractRoles = {};
+  for (const m of readMethods) {
+    if (!m.inputs?.length && /_ROLE$/.test(m.name)) {
+      const value = autoReadValues[m.name];
+      if (typeof value === 'string' && /^0x[0-9a-fA-F]{64}$/.test(value)) {
+        contractRoles[m.name] = value;
+      }
+    }
+  }
+  const allRoles = { ...contractRoles, ...customRoles };
 
   // Fetch token symbol from contract
   useEffect(() => {
@@ -889,6 +893,7 @@ function App() {
               abi={abi}
               setAbi={setAbi}
               onLoadPreset={loadErc20Preset}
+              onLoadIgtAbi={loadIgtAbi}
               onClear={clearContract}
               error={contractError}
             />

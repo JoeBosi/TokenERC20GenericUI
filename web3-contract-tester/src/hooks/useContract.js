@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ethers } from 'ethers';
+import IGT_ABI from '../abi/igt-token.json';
 
 const STORAGE_KEY_ADDRESS = 'contract_address';
 const STORAGE_KEY_ABI = 'contract_abi';
@@ -128,6 +129,26 @@ export const ERC20_ABI = [
   }
 ];
 
+// ethers v6 returns every Solidity integer type (uint8, uint16, ... not just
+// uint256) as a JS bigint, and a multi-output read as an array-like Result —
+// neither renders usefully as a raw React child (bigint is silently dropped,
+// arrays concatenate with no separators), so every auto-read value is
+// normalized through here before being stored.
+function formatReadResult(value, outputs) {
+  if (typeof value === 'bigint') return value.toString();
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) {
+    return value
+      .map((item, i) => {
+        const label = outputs?.[i]?.name;
+        const formatted = formatReadResult(item, []);
+        return label ? `${label}: ${formatted}` : formatted;
+      })
+      .join(', ');
+  }
+  return value;
+}
+
 export function useContract(provider, signer, fetchBalances) {
   const [contractAddress, setContractAddress] = useState('');
   const [abi, setAbi] = useState('');
@@ -141,7 +162,7 @@ export function useContract(provider, signer, fetchBalances) {
   // Auto-read view methods without parameters
   const autoReadViewMethods = useCallback(async (contractInstance, readMethodsList) => {
     if (!contractInstance || !readMethodsList?.length) return;
-    
+
     const noParamMethods = readMethodsList.filter(m => !m.inputs || m.inputs.length === 0);
     if (noParamMethods.length === 0) return;
 
@@ -149,21 +170,7 @@ export function useContract(provider, signer, fetchBalances) {
     for (const method of noParamMethods) {
       try {
         const result = await contractInstance[method.name]();
-        // Format based on output type
-        if (method.outputs && method.outputs[0]) {
-          const outputType = method.outputs[0].type;
-          if (outputType === 'uint256') {
-            values[method.name] = result.toString();
-          } else if (outputType === 'address') {
-            values[method.name] = result;
-          } else if (outputType === 'bool') {
-            values[method.name] = result ? 'Yes' : 'No';
-          } else {
-            values[method.name] = result;
-          }
-        } else {
-          values[method.name] = result;
-        }
+        values[method.name] = formatReadResult(result, method.outputs);
       } catch (err) {
         values[method.name] = '—';
       }
@@ -273,6 +280,10 @@ export function useContract(provider, signer, fetchBalances) {
     setAbi(JSON.stringify(ERC20_ABI, null, 2));
   }, []);
 
+  const loadIgtAbi = useCallback(() => {
+    setAbi(JSON.stringify(IGT_ABI, null, 2));
+  }, []);
+
   const clearContract = useCallback(() => {
     setContractAddress('');
     setAbi('');
@@ -324,6 +335,7 @@ export function useContract(provider, signer, fetchBalances) {
     autoReadValues,
     error,
     loadErc20Preset,
+    loadIgtAbi,
     clearContract,
     watchAsset,
     refreshReadValues,

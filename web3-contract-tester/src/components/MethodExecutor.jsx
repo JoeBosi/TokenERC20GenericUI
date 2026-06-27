@@ -9,23 +9,44 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
   const [transactionEvents, setTransactionEvents] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleInputChange = useCallback((methodName, paramIndex, value) => {
+  // Some ABIs (e.g. the proprietary IGT token) overload a name across several
+  // signatures (transferAndCall(address,uint256) vs. (address,uint256,bytes)).
+  // Keying state/React lists by name alone collapses those into one entry, so
+  // every place that needs to identify "this specific method" uses the full
+  // signature instead.
+  const getMethodKey = useCallback((method) => (
+    `${method.name}(${(method.inputs || []).map(i => i.type).join(',')})`
+  ), []);
+
+  // Names that appear more than once (overloads) need their param types shown
+  // in the label too, or the duplicate rows would look identical to the user.
+  const nameOccurrences = {};
+  [...(readMethods || []), ...(writeMethods || [])].forEach(m => {
+    nameOccurrences[m.name] = (nameOccurrences[m.name] || 0) + 1;
+  });
+  const getMethodLabel = (method) => (
+    nameOccurrences[method.name] > 1
+      ? `${method.name}(${(method.inputs || []).map(i => i.type).join(', ')})`
+      : method.name
+  );
+
+  const handleInputChange = useCallback((methodKey, paramIndex, value) => {
     setMethodInputs(prev => ({
       ...prev,
-      [methodName]: {
-        ...prev[methodName],
+      [methodKey]: {
+        ...prev[methodKey],
         [paramIndex]: value,
       },
     }));
   }, []);
 
-  const toggleExpand = useCallback((methodName) => {
+  const toggleExpand = useCallback((methodKey) => {
     setExpandedMethods(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(methodName)) {
-        newSet.delete(methodName);
+      if (newSet.has(methodKey)) {
+        newSet.delete(methodKey);
       } else {
-        newSet.add(methodName);
+        newSet.add(methodKey);
       }
       return newSet;
     });
@@ -34,12 +55,12 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
   const executeMethod = useCallback(async (method, isRead) => {
     if (!contract) return;
 
-    const methodName = method.name;
-    setExecutingMethods(prev => new Set(prev).add(methodName));
-    setMethodResults(prev => ({ ...prev, [methodName]: null }));
+    const methodKey = getMethodKey(method);
+    setExecutingMethods(prev => new Set(prev).add(methodKey));
+    setMethodResults(prev => ({ ...prev, [methodKey]: null }));
 
     try {
-      const inputs = methodInputs[methodName] || {};
+      const inputs = methodInputs[methodKey] || {};
       const args = method.inputs.map((_, index) => {
         const value = inputs[index] || '';
         if (value === '') {
@@ -51,12 +72,12 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       let result;
       let events = [];
       if (isRead) {
-        result = await contract[methodName](...args);
+        result = await contract[methodKey](...args);
         if (typeof result === 'object' && result.toString) {
           result = result.toString();
         }
       } else {
-        const tx = await contract[methodName](...args);
+        const tx = await contract[methodKey](...args);
         result = await tx.wait();
         // Extract events from transaction receipt
         if (result?.logs) {
@@ -104,19 +125,19 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
         };
         
         // Store events for this method
-        setTransactionEvents(prev => ({ ...prev, [methodName]: events }));
+        setTransactionEvents(prev => ({ ...prev, [methodKey]: events }));
       }
 
       setMethodResults(prev => ({
         ...prev,
-        [methodName]: {
+        [methodKey]: {
           success: true,
           data: result,
           events: events,
           timestamp: Date.now(),
         },
       }));
-      
+
       // Notify parent component for refresh
       if (!isRead && onTransactionSuccess) {
         onTransactionSuccess();
@@ -125,7 +146,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
       const decodedError = decodeContractError(err);
       setMethodResults(prev => ({
         ...prev,
-        [methodName]: {
+        [methodKey]: {
           success: false,
           error: decodedError,
           rawError: err?.data || err?.message, // Keep raw for debugging
@@ -135,11 +156,11 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
     } finally {
       setExecutingMethods(prev => {
         const newSet = new Set(prev);
-        newSet.delete(methodName);
+        newSet.delete(methodKey);
         return newSet;
       });
     }
-  }, [contract, methodInputs]);
+  }, [contract, methodInputs, getMethodKey]);
 
   const formatType = (type) => {
     if (type.includes('uint')) return 'number';
@@ -184,16 +205,16 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
     }
     
     if (!data) return err?.reason || err?.message || 'Unknown error';
-    
+
     // Extract selector (first 10 chars: 0x + 8 hex)
     const selector = data.toString().slice(0, 10).toLowerCase();
-    
-    // Check known errors first (fast path)
-    if (KNOWN_ERROR_SELECTORS[selector]) {
-      return `❌ ${KNOWN_ERROR_SELECTORS[selector]}`;
-    }
-    
-    // Try to parse with contract interface if available
+
+    // Try the loaded contract's own ABI first — it knows this contract's real
+    // errors and gives back structured args (account, role, amounts...). The
+    // static KNOWN_ERROR_SELECTORS guesses below are generic OZ selectors and
+    // can collide with a different error in *this* ABI (a 4-byte selector
+    // isn't globally unique), so they're only a fallback for when the loaded
+    // ABI doesn't declare the error at all.
     if (contract) {
       try {
         const parsed = contract.interface.parseError(data);
@@ -212,14 +233,18 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
               return `${k}: ${v}`;
             })
             .join(', ');
-          
+
           return `❌ ${parsed.name}${args ? ` (${args})` : ''}`;
         }
       } catch {
-        // Interface parse failed, already checked known errors above
+        // Interface parse failed — fall through to the static map below.
       }
     }
-    
+
+    if (KNOWN_ERROR_SELECTORS[selector]) {
+      return `❌ ${KNOWN_ERROR_SELECTORS[selector]}`;
+    }
+
     return err?.reason || err?.message || 'Unknown error';
   };
 
@@ -252,16 +277,18 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
 
   const renderMethodCard = (method, isRead, isConnected) => {
     const methodName = method.name;
-    const isExpanded = expandedMethods.has(methodName);
-    const isExecuting = executingMethods.has(methodName);
-    const result = methodResults[methodName];
+    const methodKey = getMethodKey(method);
+    const methodLabel = getMethodLabel(method);
+    const isExpanded = expandedMethods.has(methodKey);
+    const isExecuting = executingMethods.has(methodKey);
+    const result = methodResults[methodKey];
     const hasInputs = method.inputs && method.inputs.length > 0;
 
     return (
-      <div key={methodName} style={styles.methodCard}>
-        <div 
+      <div key={methodKey} style={styles.methodCard}>
+        <div
           style={styles.methodHeader}
-          onClick={() => hasInputs && toggleExpand(methodName)}
+          onClick={() => hasInputs && toggleExpand(methodKey)}
         >
           <div style={styles.methodInfo}>
             <span style={{
@@ -270,7 +297,7 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
             }}>
               {isRead ? 'READ' : 'WRITE'}
             </span>
-            <span style={styles.methodName}>{methodName}</span>
+            <span style={styles.methodName}>{methodLabel}</span>
           </div>
           <div style={styles.methodActions}>
             {hasInputs && (
@@ -312,8 +339,8 @@ export function MethodExecutor({ contract, readMethods, writeMethods, autoReadVa
                     </label>
                     <input
                       type={formatType(input.type)}
-                      value={(methodInputs[methodName]?.[index]) || ''}
-                      onChange={(e) => handleInputChange(methodName, index, e.target.value)}
+                      value={(methodInputs[methodKey]?.[index]) || ''}
+                      onChange={(e) => handleInputChange(methodKey, index, e.target.value)}
                       placeholder={getPlaceholder(input.type, input.name)}
                       style={styles.methodInput}
                     />

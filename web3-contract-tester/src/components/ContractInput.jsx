@@ -41,9 +41,10 @@ export function ContractInput({
   setContractAddress, 
   abi, 
   setAbi, 
-  onLoadPreset, 
-  onClear, 
-  error 
+  onLoadPreset,
+  onLoadIgtAbi,
+  onClear,
+  error
 }) {
   const [fetchingAbi, setFetchingAbi] = useState(false);
   const [toast, setToast] = useState(null);
@@ -224,6 +225,13 @@ export function ContractInput({
                     <path d="M2 12l10 5 10-5"/>
                   </svg>
                   ERC20 Preset
+                </button>
+                <button onClick={onLoadIgtAbi} style={styles.presetBtn} title="Load the proprietary IGT token ABI">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                  Load IGT ABI
                 </button>
               </div>
             </div>

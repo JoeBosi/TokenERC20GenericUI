@@ -373,6 +373,8 @@ const styles = {
     fontWeight: 500,
     marginBottom: '10px',
     lineHeight: '1.4',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
   },
   addressRow: {
     display: 'flex',
